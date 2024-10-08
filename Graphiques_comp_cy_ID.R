@@ -6,15 +6,10 @@ library(tidyr)
 #install.packages("ggplot2")
 library(ggplot2)
 
-# choisir le répertoire de travail
-
-setwd("C:/Users/sarah/OneDrive/PhD/0_Papier_Méthodologie/Analyses_comp_methodes/2023_samples/Ech_21-40")
-getwd()
-
 # récupérer les fichiers avec les données / pollens identifiés et nettoyer
 
 #data cyto
-dataCY<- read.csv("ID_2023_2140_CY.csv", sep=";", h=T)
+dataCY<- read.csv("ID_2023_2140_CY.csv", sep=",", h=T)
 group<-subset(dataCY,select=-X)
 dataCY$TOTAL<-rowSums(group)
 dataCY$Sample<-dataCY$X
@@ -62,7 +57,7 @@ all_data<-full_join(dataCY,dataMI)
 all_data$Sample <- as.factor(all_data$Sample)
 all_data$Taxon <- as.factor(all_data$Taxon)
 all_data$meth <- as.factor(all_data$meth)
-#write.csv(all_data, "all_data_plot.csv", row.names = T)
+#write.csv(all_data, "all_data_plotMICY.csv", row.names = T)
 #extraire données TOTAL pour chaque meth et chaque Sample
 TOTAL <- data.frame(Sample = numeric(), meth = character(), TOTAL = numeric())
 for (sample in unique(all_data$Sample)) {
