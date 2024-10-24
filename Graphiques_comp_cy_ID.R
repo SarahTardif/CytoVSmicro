@@ -8,19 +8,6 @@ library(ggplot2)
 
 # récupérer les fichiers avec les données / pollens identifiés et nettoyer
 
-#data cyto
-dataCY<- read.csv("ID_2023_2140_CY.csv", sep=",", h=T)
-group<-subset(dataCY,select=-X)
-dataCY$TOTAL<-rowSums(group)
-dataCY$Sample<-dataCY$X
-dataCY<-subset(dataCY, select=-c(X,Debris))
-dataCY <- pivot_longer(dataCY, cols = -c(Sample, TOTAL), names_to = "Taxon", values_to = "Nombre")
-dataCY[is.na(dataCY)] <- 0
-numeros <- as.numeric(gsub("CY_", "", dataCY$Sample))
-dataCY <- dataCY[order(numeros), ]
-dataCY$Sample <- factor(dataCY$Sample, levels = unique(dataCY$Sample))
-#write.csv(dataCY, "dataCY_plot.csv", row.names = T)
-
 #data micro
 dataMI<- read.csv("ID_2023_2140_MI.csv", sep=";", h=T)
 names(dataMI) <- gsub("Total\\.count\\.", "", names(dataMI))
@@ -32,12 +19,43 @@ dataMI[is.na(dataMI)] <- 0
 numeros1 <- as.numeric(gsub("MI_", "", dataMI$Sample))
 dataMI <- dataMI[order(numeros1), ]
 dataMI$Sample <- factor(dataMI$Sample, levels = unique(dataMI$Sample))
+dataMI<-dataMI[dataMI$Sample!=21,]
+
+#data cyto
+dataCY<- read.csv("ID_2023_2140_CY.csv", sep=",", h=T)
+dataCY$Sample<-dataCY$X
+dataCY<-subset(dataCY, select=-c(X,Debris))
+group<-subset(dataCY,select=-Sample)
+dataCY$TOTAL<-rowSums(group)
+dataCY <- pivot_longer(dataCY, cols = -c(Sample, TOTAL), names_to = "species", values_to = "Nombre")
+dataCY[is.na(dataCY)] <- 0
+numeros <- as.numeric(gsub("CY_", "", dataCY$Sample))
+dataCY <- dataCY[order(numeros), ]
+dataCY<-dataCY[dataCY$Sample!="CY_21",]
+dataCY$Sample <- factor(dataCY$Sample, levels = unique(dataCY$Sample))
+
+#regroupement en fonction genre et famille pour certains groupes (comme dans dataMI)
+dataCY$Genus<-sub("_.*", "", dataCY$species)
+dataCY <- aggregate(Nombre ~ Genus + Sample+TOTAL, data = dataCY, sum)
+spref<-read.csv("species_refcollection.csv")
+spref<-subset(spref,select=-species)
+dataCY<-merge(dataCY,spref,by="Genus")
+dataCY<- unique(dataCY)
+dataCY$Genus <- ifelse(dataCY$Family == "Rosaceae", "Rosaceae", dataCY$Genus)
+dataCY$Genus <- ifelse(dataCY$Family == "Pinaceae", "Pinaceae", dataCY$Genus)
+dataCY$Genus <- ifelse(dataCY$Family == "Cupressaceae", "Cupressaceae", dataCY$Genus)
+dataCY$Genus <- ifelse(dataCY$Genus == "Ostrya"|dataCY$Genus =="Corylus", "Corylus.Ostrya", dataCY$Genus)
+colnames(dataCY)[colnames(dataCY) == "Genus"] <- "Taxon"
+dataCY<-subset(dataCY,select=-Family)
+#write.csv(dataCY, "dataCY_plot.csv", row.names = T)
+
+
 
 # faire graphique data cyto
 ggplot(dataCY, aes(x = Sample, y = Nombre)) +
   geom_bar(stat = "identity", position = "dodge") +
   labs(title = "Nombre total de pollens pour la cyto")+
-  coord_cartesian(ylim = c(0, 10000))
+  coord_cartesian(ylim = c(0, 15000))
 # faire graphique data micro
 ggplot(dataMI, aes(x = Sample, y = Nombre)) +
   geom_bar(stat = "identity", position = "dodge") +
@@ -58,35 +76,17 @@ all_data$Sample <- as.factor(all_data$Sample)
 all_data$Taxon <- as.factor(all_data$Taxon)
 all_data$meth <- as.factor(all_data$meth)
 #write.csv(all_data, "all_data_plotMICY.csv", row.names = T)
-#extraire données TOTAL pour chaque meth et chaque Sample
-TOTAL <- data.frame(Sample = numeric(), meth = character(), TOTAL = numeric())
-for (sample in unique(all_data$Sample)) {
-  for (meth_type in unique(all_data$meth)) {
-    unique_TOTAL <- unique(all_data$TOTAL[all_data$Sample == sample & all_data$meth == meth_type])
-    if (length(TOTAL) > 0) {
-      TOTAL <- rbind(TOTAL, data.frame(Sample = sample, meth = meth_type, TOTAL = unique_TOTAL))
-    }
-  }
-}
 
-rownames(TOTAL) <- NULL
-print(TOTAL)
-ggplot(TOTAL, aes(x = Sample, y = TOTAL, fill = meth)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  labs(title = "Comparaison des abondances totales de pollens 
-en fonction de la méthode d'identification
-et de l'échantillon")+
-  coord_cartesian(ylim = c(0, 125000))
-
-ggplot(TOTAL, aes(x = meth, y = TOTAL, fill = meth)) +
+ggplot(all_data, aes(x = meth, y = TOTAL, fill = meth)) +
   geom_boxplot() +
   labs(title = "Comparaison des abondances totales de pollens 
 en fonction de la méthode d'identification",
        x = "Méthode",
        y = "TOTAL") +
-  coord_cartesian(ylim = c(0, 60000))
+  coord_cartesian(ylim = c(0, 10000))
 
 # stats pour abondances relatives des taxons 
+# vérifier que les données dataCY sont regroupées dans meme catégories que pour dataMI sinon pas comparable !
 ggplot(all_data[all_data$Sample %in% unique(all_data$Sample)[1:70], ], aes(x = Taxon, y = Nombre, fill=meth)) +
   geom_bar(stat = "identity", position = "dodge") +
   facet_wrap(~ Sample) +
@@ -111,7 +111,7 @@ getwd()
 write.csv(ttest_taxon, "ttest_taxon_2023pt2.csv", row.names = T)
 
 #zoom sur certains échantillons
-ggplot(all_data[all_data$Sample == "28", ], aes(x = Taxon, y = Nombre, fill=meth)) +
+ggplot(all_data[all_data$Sample == "24", ], aes(x = Taxon, y = Nombre, fill=meth)) +
   geom_bar(stat = "identity", position = "dodge") +
   facet_wrap(~ Sample) +
   labs(title = "Comparaison du nombre de pollens de chaque taxon en fonction méthodes d'ID")+
