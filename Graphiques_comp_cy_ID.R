@@ -87,12 +87,29 @@ en fonction de la méthode d'identification",
 
 # stats pour abondances relatives des taxons 
 # vérifier que les données dataCY sont regroupées dans meme catégories que pour dataMI sinon pas comparable !
-ggplot(all_data[all_data$Sample %in% unique(all_data$Sample)[1:70], ], aes(x = Taxon, y = Nombre, fill=meth)) +
+ggplot(all_data, aes(x = Taxon, y = Nombre, fill=meth)) +
   geom_bar(stat = "identity", position = "dodge") +
   facet_wrap(~ Sample) +
   labs(title = "Comparaison du nombre de pollens de chaque taxon en fonction méthodes d'ID")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
   coord_cartesian(ylim = c(0, 5000))
+#même chose mais en considérant les échantillons comme des réplicas 
+taxahigh<-subset(all_data, Taxon %in% c("Salix", "Alnus","Corylus.Ostrya","Ulmus","NI","Quercus"))
+ggplot(taxahigh, aes(x = Taxon, y = Nombre, fill=meth)) +
+  geom_boxplot() +
+  labs(title = "Distribution du Nombre par Taxon et Méthode",
+       x = "Taxon et Méthode",
+       y = "Nombre")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
+  coord_cartesian(ylim=c(0,3000))
+taxalow<-subset(all_data, !Taxon %in% c("Salix", "Alnus","Corylus.Ostrya","Ulmus","NI","Quercus"))
+ggplot(taxalow, aes(x = Taxon, y = Nombre, fill=meth)) +
+  geom_boxplot() +
+  labs(title = "Distribution du Nombre par Taxon et Méthode",
+       x = "Taxon et Méthode",
+       y = "Nombre")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
+  coord_cartesian(ylim=c(0,300))  
 
 #t-test pour chaque taxon
 donnees_cyto <- subset(all_data, meth == "cyto")
@@ -108,12 +125,13 @@ for (taxon in taxons) {
 }
 print(ttest_taxon)
 getwd()
-write.csv(ttest_taxon, "ttest_taxon_2023pt2.csv", row.names = T)
+#write.csv(ttest_taxon, "ttest_taxon_2023pt2.csv", row.names = T)
 
 #zoom sur certains échantillons
-ggplot(all_data[all_data$Sample == "24", ], aes(x = Taxon, y = Nombre, fill=meth)) +
+ggplot(all_data[all_data$Sample == "32", ], aes(x = Taxon, y = Nombre, fill=meth)) +
   geom_bar(stat = "identity", position = "dodge") +
   facet_wrap(~ Sample) +
   labs(title = "Comparaison du nombre de pollens de chaque taxon en fonction méthodes d'ID")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
   coord_cartesian(ylim = c(0, 2500))
+
