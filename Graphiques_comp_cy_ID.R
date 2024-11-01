@@ -5,6 +5,9 @@ library(dplyr)
 library(tidyr)
 #install.packages("ggplot2")
 library(ggplot2)
+#install.packages("httpgd")
+library(httpgd)
+
 
 # récupérer les fichiers avec les données / pollens identifiés et nettoyer
 
@@ -76,7 +79,7 @@ all_data$Sample <- as.factor(all_data$Sample)
 all_data$Taxon <- as.factor(all_data$Taxon)
 all_data$meth <- as.factor(all_data$meth)
 #write.csv(all_data, "all_data_plotMICY.csv", row.names = T)
-
+hgd() #afficher graphes dans navigateur 
 ggplot(all_data, aes(x = meth, y = TOTAL, fill = meth)) +
   geom_boxplot() +
   labs(title = "Comparaison des abondances totales de pollens 
