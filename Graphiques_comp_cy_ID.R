@@ -30,7 +30,7 @@ dataCY$Sample<-dataCY$X
 dataCY<-subset(dataCY, select=-c(X,Debris))
 group<-subset(dataCY,select=-Sample)
 dataCY$TOTAL<-rowSums(group)
-dataCY <- pivot_longer(dataCY, cols = -c(Sample, TOTAL), names_to = "species", values_to = "Nombre")
+dataCY <- pivot_longer(dataCY, cols = -c(Sample, TOTAL), names_to = "Taxon", values_to = "Nombre")
 dataCY[is.na(dataCY)] <- 0
 numeros <- as.numeric(gsub("CY_", "", dataCY$Sample))
 dataCY <- dataCY[order(numeros), ]
@@ -52,6 +52,11 @@ colnames(dataCY)[colnames(dataCY) == "Genus"] <- "Taxon"
 dataCY<-subset(dataCY,select=-Family)
 #write.csv(dataCY, "dataCY_plot.csv", row.names = T)
 
+# renettoyage de dataMI et dataCY pour avoir les memes catégories dans taxons
+dataCY$Taxon <- ifelse(dataCY$Taxon == "Carpinus"|dataCY$Taxon =="Celtis"|dataCY$Taxon =="Robinia", "Others", dataCY$Taxon)
+dataCY$Taxon <- ifelse(dataCY$Taxon == "Syringa", "Olaeceae", dataCY$Taxon)
+dataMI$Taxon <- ifelse(dataMI$Taxon == "Larix", "Pinaceae", dataMI$Taxon)
+dataMI$Taxon <- ifelse(dataMI$Taxon == "Armoise"|dataMI$Taxon =="Plantago"|dataMI$Taxon =="Autres.herbes"|dataMI$Taxon =="NI"|dataMI$Taxon =="Gramineae"|dataMI$Taxon =="Typha", "Others", dataMI$Taxon)
 
 
 # faire graphique data cyto
@@ -81,11 +86,14 @@ all_data$meth <- as.factor(all_data$meth)
 #write.csv(all_data, "all_data_plotMICY.csv", row.names = T)
 ggplot(all_data, aes(x = meth, y = TOTAL, fill = meth)) +
   geom_boxplot() +
-  labs(title = "Comparaison des abondances totales de pollens 
-en fonction de la méthode d'identification",
-       x = "Méthode",
-       y = "TOTAL") +
-  coord_cartesian(ylim = c(0, 10000))
+  #labs(title = "Comparaison des abondances totales de pollens 
+#en fonction de la méthode d'identification",
+ #      x = "Méthode",
+  #     y = "TOTAL") +
+  #facet_wrap(~ Sample)+
+  coord_cartesian(ylim = c(0, 7500))
+summary(all_data$TOTAL[all_data$meth == "micro"])
+summary(all_data$TOTAL[all_data$meth == "cyto"])
 
 # stats pour abondances relatives des taxons 
 # vérifier que les données dataCY sont regroupées dans meme catégories que pour dataMI sinon pas comparable !
@@ -94,16 +102,16 @@ ggplot(all_data, aes(x = Taxon, y = Nombre, fill=meth)) +
   facet_wrap(~ Sample) +
   labs(title = "Comparaison du nombre de pollens de chaque taxon en fonction méthodes d'ID")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
-  coord_cartesian(ylim = c(0, 5000))
+  coord_cartesian(ylim = c(0, 1000))
 #même chose mais en considérant les échantillons comme des réplicas 
 taxahigh<-subset(all_data, Taxon %in% c("Salix", "Alnus","Corylus.Ostrya","Ulmus","NI","Quercus"))
-ggplot(taxahigh, aes(x = Taxon, y = Nombre, fill=meth)) +
+ggplot(all_data, aes(x = Taxon, y = Nombre, fill=meth)) +
   geom_boxplot() +
   labs(title = "Distribution du Nombre par Taxon et Méthode",
        x = "Taxon et Méthode",
        y = "Nombre")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
-  coord_cartesian(ylim=c(0,3000))
+  coord_cartesian(ylim=c(0,25))
 taxalow<-subset(all_data, !Taxon %in% c("Salix", "Alnus","Corylus.Ostrya","Ulmus","NI","Quercus"))
 ggplot(taxalow, aes(x = Taxon, y = Nombre, fill=meth)) +
   geom_boxplot() +
