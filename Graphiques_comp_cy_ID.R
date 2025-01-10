@@ -23,22 +23,32 @@ numeros1 <- as.numeric(gsub("MI_", "", dataMI$Sample))
 dataMI <- dataMI[order(numeros1), ]
 dataMI$Sample <- factor(dataMI$Sample, levels = unique(dataMI$Sample))
 dataMI<-dataMI[dataMI$Sample!=21,]
+dataMI<-dataMI[dataMI$Sample!=32,]
 
 #data cyto
-dataCY<- read.csv("ID_2023_2140_CY.csv", sep=",", h=T)
-dataCY$Sample<-dataCY$X
-dataCY<-subset(dataCY, select=-c(X,Debris))
-group<-subset(dataCY,select=-Sample)
-dataCY$TOTAL<-rowSums(group)
+#dataCY<- read.csv("ID_Ech2140_balanced.csv", sep=",", h=T)
+#dataCY$Sample<-dataCY$X
+#dataCY<-subset(dataCY, select=-c(X,Debris))
+#group<-subset(dataCY,select=-Sample)
+#dataCY$TOTAL<-rowSums(group)
+
+
+# ajout colonnes dont pas de grains de pollens dans ces taxa
+Taxa_wanted <- c("Aesculus_", "Acer_", "Ambrosia_", "Betula_", "Carya_", "Elaeagnus_", "Fagus_", "Fraxinus_","Ginkgo_","Gleditsia_","Juglans_","Ligustrum_","Malus_","Quercus_","Taxus_")
+for (col in Taxa_wanted) {
+  if (!col %in% colnames(dataCY)) {
+    dataCY[[col]] <- 0
+  }
+}
 dataCY <- pivot_longer(dataCY, cols = -c(Sample, TOTAL), names_to = "Taxon", values_to = "Nombre")
-dataCY[is.na(dataCY)] <- 0
-numeros <- as.numeric(gsub("CY_", "", dataCY$Sample))
-dataCY <- dataCY[order(numeros), ]
-dataCY<-dataCY[dataCY$Sample!="CY_21",]
+#dataCY[is.na(dataCY)] <- 0
+#numeros <- as.numeric(gsub("ID_CY ", "", dataCY$Sample))
+#dataCY <- dataCY[order(numeros), ]
+#dataCY<-dataCY[dataCY$Sample!="ID_CY 21",]
 dataCY$Sample <- factor(dataCY$Sample, levels = unique(dataCY$Sample))
 
 #regroupement en fonction genre et famille pour certains groupes (comme dans dataMI)
-dataCY$Genus<-sub("_.*", "", dataCY$species)
+dataCY$Genus<-sub("_.*", "", dataCY$Taxon)
 dataCY <- aggregate(Nombre ~ Genus + Sample+TOTAL, data = dataCY, sum)
 spref<-read.csv("species_refcollection.csv")
 spref<-subset(spref,select=-species)
@@ -63,7 +73,7 @@ dataMI$Taxon <- ifelse(dataMI$Taxon == "Armoise"|dataMI$Taxon =="Plantago"|dataM
 ggplot(dataCY, aes(x = Sample, y = Nombre)) +
   geom_bar(stat = "identity", position = "dodge") +
   labs(title = "Nombre total de pollens pour la cyto")+
-  coord_cartesian(ylim = c(0, 15000))
+  coord_cartesian(ylim = c(0, 20000))
 # faire graphique data micro
 ggplot(dataMI, aes(x = Sample, y = Nombre)) +
   geom_bar(stat = "identity", position = "dodge") +
@@ -91,7 +101,7 @@ ggplot(all_data, aes(x = meth, y = TOTAL, fill = meth)) +
  #      x = "Méthode",
   #     y = "TOTAL") +
   #facet_wrap(~ Sample)+
-  coord_cartesian(ylim = c(0, 7500))
+  coord_cartesian(ylim = c(0, 3000))
 summary(all_data$TOTAL[all_data$meth == "micro"])
 summary(all_data$TOTAL[all_data$meth == "cyto"])
 
@@ -104,22 +114,13 @@ ggplot(all_data, aes(x = Taxon, y = Nombre, fill=meth)) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
   coord_cartesian(ylim = c(0, 1000))
 #même chose mais en considérant les échantillons comme des réplicas 
-taxahigh<-subset(all_data, Taxon %in% c("Salix", "Alnus","Corylus.Ostrya","Ulmus","NI","Quercus"))
 ggplot(all_data, aes(x = Taxon, y = Nombre, fill=meth)) +
   geom_boxplot() +
   labs(title = "Distribution du Nombre par Taxon et Méthode",
        x = "Taxon et Méthode",
        y = "Nombre")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
-  coord_cartesian(ylim=c(0,25))
-taxalow<-subset(all_data, !Taxon %in% c("Salix", "Alnus","Corylus.Ostrya","Ulmus","NI","Quercus"))
-ggplot(taxalow, aes(x = Taxon, y = Nombre, fill=meth)) +
-  geom_boxplot() +
-  labs(title = "Distribution du Nombre par Taxon et Méthode",
-       x = "Taxon et Méthode",
-       y = "Nombre")+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
-  coord_cartesian(ylim=c(0,300))  
+  coord_cartesian(ylim=c(0,200))
 
 #t-test pour chaque taxon
 donnees_cyto <- subset(all_data, meth == "cyto")
@@ -145,3 +146,28 @@ ggplot(all_data[all_data$Sample == "32", ], aes(x = Taxon, y = Nombre, fill=meth
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
   coord_cartesian(ylim = c(0, 2500))
 
+### Corrélations entre nb polllen et methode
+# Corrélation entre les valeurs uniques de TOTAL et meth
+all_data <- all_data %>%
+  mutate(
+    Sample = as.numeric(Sample)
+    Taxon = as.numeric(Taxon)
+    TOTAL = as.numeric(TOTAL),
+    meth = as.numeric(meth)
+  )
+unique_data <- all_data %>%
+  distinct(TOTAL, meth)  # On garde les paires uniques de TOTAL et meth
+correlation_total_meth <- cor(unique_data$TOTAL, unique_data$meth, use = "complete.obs")
+# Affichage de la corrélation
+cat("Corrélation entre les valeurs uniques de TOTAL et meth :", correlation_total_meth, "\n")
+
+# Calcul de la matrice de corrélation
+correlation_matrix <- cor(all_data, use = "complete.obs")
+
+# Affichage de la matrice de corrélation
+print("Matrice de corrélation entre les variables numériques :")
+print(correlation_matrix)
+
+# Optionnel : Visualisation de la matrice de corrélation avec ggplot2 ou corrplot
+library(corrplot)
+corrplot(correlation_matrix, method = "circle", type = "upper", tl.col = "black", tl.srt = 45)
