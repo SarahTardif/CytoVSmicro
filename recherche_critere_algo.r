@@ -33,7 +33,7 @@ write.csv(files_df,"../Ech2140_wodebris_ID.csv",row.names=FALSE)
 
 
 #data
-data<-read.csv("ID_Ech2140_balanced_essentials.csv",sep=",",h=T)
+data<-read.csv("ID_Ech2140_balanced_genus.csv",sep=",",h=T)
 data$Sample <- gsub("ID_CY ", "", data$Sample)
 data<-data[data$Sample!="21",]
 data<-data[data$Sample!="32",]
@@ -55,7 +55,7 @@ ggplot(datasp, aes(x = species, y = prob)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 #enlever tous les pollens dont la proba est inferieure à 0.5
-dataCY<- datasp[datasp$prob >= 0.53, ]
+dataCY<- datasp[datasp$prob >= 0.75, ]
 dataCY <- dataCY[, -which(names(dataCY) %in% c("prob"))]
 dataCY<-table(dataCY$Sample, dataCY$species)
 dataCY<-as.data.frame.matrix(dataCY)
@@ -63,18 +63,20 @@ dataCY<-as.data.frame.matrix(dataCY)
 dataCY$TOTAL<-rowSums(dataCY)
 dataCY<-rownames_to_column(dataCY, var = "Sample")
 
+#write.csv(dataCY,"C:/Users/sarah/Downloads/nb_pollen_taxon_sample_genus.csv",row.names=F)
+
 dataCY_long <- reshape(
   dataCY,
   varying = list(names(dataCY)[2:ncol(dataCY)]),
   v.names = "Count",
-  timevar = "Species",
+  timevar = "Genus",
   times = names(dataCY)[2:ncol(dataCY)],
   direction = "long"
 )
 
-ggplot(dataCY_long, aes(x = Species, y = Count)) +
+ggplot(dataCY_long, aes(x = Genus, y = Count)) +
   geom_boxplot() +
-  coord_cartesian(ylim = c(0, 150))+
+  coord_cartesian(ylim = c(0, 500))+
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
