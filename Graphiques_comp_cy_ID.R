@@ -34,7 +34,7 @@ dataMI<-dataMI[dataMI$Sample!=32,]
 
 
 # ajout colonnes dont pas de grains de pollens dans ces taxa
-Taxa_wanted <- c("Aesculus_", "Acer_", "Ambrosia_", "Betula_", "Carya_", "Elaeagnus_", "Fagus_", "Fraxinus_","Ginkgo_","Gleditsia_","Juglans_","Ligustrum_","Malus_","Quercus_","Taxus_")
+Taxa_wanted <- c("Acer_","Aesculus_", "Alnus_", "Ambrosia_", "Betula_", "Carya_", "Elaeagnus_", "Fagus_", "Fraxinus_","Ginkgo_","Gleditsia_","Juglans_","Ligustrum_","Malus_","Quercus_","Taxus_")
 for (col in Taxa_wanted) {
   if (!col %in% colnames(dataCY)) {
     dataCY[[col]] <- 0
@@ -73,7 +73,7 @@ dataMI$Taxon <- ifelse(dataMI$Taxon == "Armoise"|dataMI$Taxon =="Plantago"|dataM
 ggplot(dataCY, aes(x = Sample, y = Nombre)) +
   geom_bar(stat = "identity", position = "dodge") +
   labs(title = "Nombre total de pollens pour la cyto")+
-  coord_cartesian(ylim = c(0, 20000))
+  coord_cartesian(ylim = c(0, 1000))
 # faire graphique data micro
 ggplot(dataMI, aes(x = Sample, y = Nombre)) +
   geom_bar(stat = "identity", position = "dodge") +
@@ -101,8 +101,8 @@ ggplot(all_data, aes(x = meth, y = TOTAL, fill = meth)) +
  #      x = "Méthode",
   #     y = "TOTAL") +
   #facet_wrap(~ Sample)+
-  coord_cartesian(ylim = c(0, 3000))
-summary(all_data$TOTAL[all_data$meth == "micro"])
+  coord_cartesian(ylim = c(0, 1500))
+xsummary(all_data$TOTAL[all_data$meth == "micro"])
 summary(all_data$TOTAL[all_data$meth == "cyto"])
 
 # stats pour abondances relatives des taxons 
@@ -120,23 +120,34 @@ ggplot(all_data, aes(x = Taxon, y = Nombre, fill=meth)) +
        x = "Taxon et Méthode",
        y = "Nombre")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
-  coord_cartesian(ylim=c(0,200))
+  coord_cartesian(ylim=c(0,350))
 
-#t-test pour chaque taxon
+# ttest pour chaque taxon
 donnees_cyto <- subset(all_data, meth == "cyto")
 donnees_micro <- subset(all_data, meth == "micro")
-ttest_taxon <- data.frame(Taxon = character(), p_value = numeric(), difference = numeric(), stringsAsFactors = FALSE)
+ttest_taxon <- data.frame(Taxon = character(), p_value = numeric(), difference = numeric())
 taxons <- unique(all_data$Taxon)
 for (taxon in taxons) {
   donnees_cyto_taxon <- subset(donnees_cyto, Taxon == taxon)
   donnees_micro_taxon <- subset(donnees_micro, Taxon == taxon)
-  diff_mesures <- mean(donnees_micro_taxon$Nombre) - mean(donnees_cyto_taxon$Nombre)
-  resultat <- t.test(donnees_cyto_taxon$Nombre, donnees_micro_taxon$Nombre, paired = TRUE)
-  ttest_taxon <- rbind(ttest_taxon, data.frame(Taxon = taxon, p_value = resultat$p.value, difference = diff_mesures))
+  if (nrow(donnees_cyto_taxon) == 0) {
+    donnees_cyto_taxon <- data.frame(Nombre = 0)
+  }
+  if (nrow(donnees_micro_taxon) == 0) {
+    donnees_micro_taxon <- data.frame(Nombre = 0)
+  }
+  diff_mesures <- mean(donnees_micro_taxon$Nombre, na.rm = TRUE) - mean(donnees_cyto_taxon$Nombre, na.rm = TRUE)
+  if (length(donnees_cyto_taxon$Nombre) > 1 & length(donnees_micro_taxon$Nombre) > 1) {
+    resultat <- t.test(donnees_cyto_taxon$Nombre, donnees_micro_taxon$Nombre, var.equal = TRUE)
+    p_value <- resultat$p.value
+  } else {
+    p_value <- NA  # Si pas assez de données, on met une p-value manquante
+  }
+  ttest_taxon <- rbind(ttest_taxon, data.frame(Taxon = taxon, p_value = p_value, difference = diff_mesures))
 }
 print(ttest_taxon)
 getwd()
-#write.csv(ttest_taxon, "ttest_taxon_2023pt2.csv", row.names = T)
+write.csv(ttest_taxon, "ttest_taxon_genus_wotaille.csv", row.names = T)
 
 #zoom sur certains échantillons
 ggplot(all_data[all_data$Sample == "32", ], aes(x = Taxon, y = Nombre, fill=meth)) +
@@ -150,8 +161,8 @@ ggplot(all_data[all_data$Sample == "32", ], aes(x = Taxon, y = Nombre, fill=meth
 # Corrélation entre les valeurs uniques de TOTAL et meth
 all_data <- all_data %>%
   mutate(
-    Sample = as.numeric(Sample)
-    Taxon = as.numeric(Taxon)
+    Sample = as.numeric(Sample),
+    Taxon = as.numeric(Taxon),
     TOTAL = as.numeric(TOTAL),
     meth = as.numeric(meth)
   )
@@ -170,4 +181,17 @@ print(correlation_matrix)
 
 # Optionnel : Visualisation de la matrice de corrélation avec ggplot2 ou corrplot
 library(corrplot)
-corrplot(correlation_matrix, method = "circle", type = "upper", tl.col = "black", tl.srt = 45)
+library(RColorBrewer)
+# Visualisation de la matrice de corrélation avec des cases colorées et des couleurs inversées
+corrplot(
+  correlation_matrix,
+  method = "color", # Utiliser des cases colorées
+  type = "upper",   # Afficher uniquement la partie supérieure
+  tl.col = "black", # Couleur des étiquettes
+  tl.srt = 45,      # Angle des étiquettes
+  col = rev(brewer.pal(n = 11, name = "RdBu")))
+
+
+
+
+
