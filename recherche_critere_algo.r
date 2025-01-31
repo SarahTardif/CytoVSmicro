@@ -33,7 +33,7 @@ write.csv(files_df,"../Ech2140_wodebris_ID.csv",row.names=FALSE)
 
 
 #data
-data<-read.csv("ID_Ech2140_balanced_genus.csv",sep=",",h=T)
+data<-read.csv("ID_Ech2140_balanced_genus_wotaille.csv",sep=",",h=T)
 data$Sample <- gsub("ID_CY ", "", data$Sample)
 data<-data[data$Sample!="21",]
 data<-data[data$Sample!="32",]
@@ -55,7 +55,7 @@ ggplot(datasp, aes(x = species, y = prob)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 #enlever tous les pollens dont la proba est inferieure à 0.5
-dataCY<- datasp[datasp$prob >= 0.75, ]
+dataCY<- datasp[datasp$prob >= 0.70, ]
 dataCY <- dataCY[, -which(names(dataCY) %in% c("prob"))]
 dataCY<-table(dataCY$Sample, dataCY$species)
 dataCY<-as.data.frame.matrix(dataCY)
@@ -63,7 +63,7 @@ dataCY<-as.data.frame.matrix(dataCY)
 dataCY$TOTAL<-rowSums(dataCY)
 dataCY<-rownames_to_column(dataCY, var = "Sample")
 
-#write.csv(dataCY,"C:/Users/sarah/Downloads/nb_pollen_taxon_sample_genus.csv",row.names=F)
+write.csv(dataCY,"C:/Users/sarah/Downloads/nb_pollen_taxon_sample_genus_wotaille.csv",row.names=F)
 
 dataCY_long <- reshape(
   dataCY,
@@ -76,15 +76,36 @@ dataCY_long <- reshape(
 
 ggplot(dataCY_long, aes(x = Genus, y = Count)) +
   geom_boxplot() +
-  coord_cartesian(ylim = c(0, 500))+
+  coord_cartesian(ylim = c(0, 350))+
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
 
 
-### Trouver meilleur seuil de proba (sans faire arbritairement)
-df <- datasp
+##### Trouver meilleur seuil de proba (sans faire arbritairement) ######
+
+## Ménage dans data pour avoir meme taxa entre MI et CY
+datasp$species <- ifelse(datasp$species == "Malus"|datasp$species =="Prunus"|datasp$species =="Pyrus"|datasp$species =="Sorbus"|datasp$species =="Amelanchier", "Rosaceae", datasp$species)
+datasp$species <- ifelse(datasp$species == "Juniperus", "Cupressaceae", datasp$species)
+datasp$species <- ifelse(datasp$species == "Pinus"|datasp$species =="Picea", "Pinaceae", datasp$species)
+datasp$species <- ifelse(datasp$species == "Corylus"|datasp$species =="Ostrya", "Corylus.Ostrya", datasp$species)
+datasp$species <- ifelse(datasp$species == "Carpinus"|datasp$species =="Celtis"|datasp$species =="Robinia", "NI.Others", datasp$species)
+
+
+dataMI$Taxon <- ifelse(dataMI$Taxon == "Larix", "Pinaceae", dataMI$Taxon)
+dataMI$Taxon <- ifelse(dataMI$Taxon == "Olaeceae", "Syringa", dataMI$Taxon)
+dataMI$Taxon <- ifelse(dataMI$Taxon == "Armoise"|dataMI$Taxon =="Autres.herbes"|dataMI$Taxon =="Gramineae"|dataMI$Taxon =="Plantago"|dataMI$Taxon =="Typha", "Herbs", dataMI$Taxon)
+dataMI$Taxon <- ifelse(dataMI$Taxon == "NI", "NI.Others", dataMI$Taxon)
+
+meanMI<-list()
+valseuil<-list()
+
+for (taxon in unique(datasp$species)){
+  df <- datasp[datasp$species==taxon,]
+  MItaxon<-dataMI[dataMI$Taxon==taxon,]
+  meanMItaxon<- mean(MItaxon$Nombre)
+  meanMI[[taxon]] <- meanMItaxon
 # Initialisation des seuils de probabilité
 seuils <- seq(0, 1, by = 0.01) # seuils de 0 à 1 avec un pas de 0.01
 # Calcul de la moyenne et de l'écart-type du nombre de lignes par Sample pour chaque seuil
@@ -96,21 +117,54 @@ resultats <- do.call(rbind, lapply(seuils, function(x) {
   data.frame(seuil = x, moyenne = moyenne, ecart_type = ecart_type)
 }))
 # Tracé du graphique avec barres d'erreur
-ggplot(resultats, aes(x = seuil, y = moyenne)) +
-  geom_line(color = "black") +
-  geom_errorbar(aes(ymin = moyenne - ecart_type, ymax = moyenne + ecart_type), 
+plot<-ggplot(resultats, aes(x = seuil, y = moyenne)) +
+      geom_line(color = "black") +
+      geom_errorbar(aes(ymin = moyenne - ecart_type, ymax = moyenne + ecart_type), 
                 width = 0.01, color = "grey", alpha = 0.6) +
-  geom_hline(yintercept=275)+
-  labs(
-    title = "recherche seuil de probabilité ",
-    x = "probabilité",
-    y = "Nombre moyen de pollen total par échantillon"
-  ) +
-  theme_minimal()
-
-valseuil<-resultats$seuil[which.min(abs(resultats$moyenne - 275))]
+      geom_hline(yintercept=meanMItaxon)+
+      labs(
+        title = paste("recherche seuil de probabilité ",taxon),
+        x = "probabilité",
+        y = "Nombre moyen de pollen total par échantillon"
+      ) +
+      theme_minimal()+
+      theme(axis.text = element_text(size = 20))
+#print(plot)
+valseuil[[taxon]]<-resultats$seuil[which.min(abs(resultats$moyenne - meanMItaxon))]
+}
 valseuil
-### prédire par groupe quand peu de dissimilarité entre les especes
+meanMI
+#valseuil<-resultats$seuil[which.min(abs(resultats$moyenne - 275))] # quand on va chercher seuil global / pas par taxon
+#valseuil
+
+# avoir dataCY mais avec seuil de proba différent spécifique à chaque taxon
+valseuil<-as.data.frame(valseuil)
+valseuil <- pivot_longer(valseuil, cols=everything(),names_to = "taxon", values_to = "probaseuil")
+dataCY<-data.frame()
+for(taxon in unique(datasp$species)){
+  datataxon<-datasp[datasp$species==taxon,]
+  proba <- valseuil[valseuil$taxon == taxon, "probaseuil"][[1]]
+  if(proba>0){
+    datataxon<-datataxon[datataxon$prob >= proba, ]
+    dataCY<- rbind(dataCY,datataxon)
+  }
+  else {
+    datataxon<-datataxon[datataxon$prob >= 0, ]
+    dataCY<- rbind(dataCY,datataxon)
+  }
+}
+dataCY <- dataCY[, -which(names(dataCY) %in% c("prob"))]
+dataCY<-table(dataCY$Sample, dataCY$species)
+dataCY<-as.data.frame.matrix(dataCY)
+#group<-data80CY[,-1]
+dataCY$TOTAL<-rowSums(dataCY)
+dataCY<-rownames_to_column(dataCY, var = "Sample")
+dataCY <- pivot_longer(dataCY, cols = -c(Sample, TOTAL), names_to = "Taxon", values_to = "Nombre")
+dataCY$Sample <- factor(dataCY$Sample, levels = unique(dataCY$Sample))
+
+
+###### prédire par groupe quand peu de dissimilarité entre les especes ########
+
 data<-read.csv("Ech2140_ID_prob.csv",sep=",",h=T)
 data<-data[data$Sample_Name!="21",]
 subdata<-data[,-!names(data) %in% "Sample_Name"]
