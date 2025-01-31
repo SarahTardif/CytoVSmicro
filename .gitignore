@@ -11,3 +11,6 @@ ID_Ech2140_balanced.csv
 ID_Ech2140_balanced_essentials.csv
 ID_Ech2140_balanced_wotaille.csv
 ID_Ech2140_balanced_genus.csv
+ID_Ech2140_balanced_genus_wotaille.csv
+ttest_taxon_genus.csv
+ttest_taxon_genus_wotaille.csv
