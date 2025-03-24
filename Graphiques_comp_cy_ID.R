@@ -118,9 +118,16 @@ ggplot(all_data, aes(x = Taxon, y = Nombre, fill=meth)) +
   geom_boxplot() +
   labs(title = "Distribution du Nombre par Taxon et Méthode",
        x = "Taxon et Méthode",
-       y = "Nombre")+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
-  coord_cartesian(ylim=c(0,350))
+       y = "Nombre de grains de pollen")+
+  theme(
+    axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.4, size =14),
+    axis.text.y = element_text(size =14),
+    axis.title.x = element_text(size=20),
+    axis.title.y = element_text(size=20),
+    legend.text=element_text(size=14),
+    legend.title = element_blank()
+    )+
+  coord_cartesian(ylim=c(0,2000))
 
 # ttest pour chaque taxon
 donnees_cyto <- subset(all_data, meth == "cyto")
@@ -143,11 +150,11 @@ for (taxon in taxons) {
   } else {
     p_value <- NA  # Si pas assez de données, on met une p-value manquante
   }
-  ttest_taxon <- rbind(ttest_taxon, data.frame(Taxon = taxon, p_value = p_value, difference = diff_mesures))
+  ttest_taxon <- rbind(ttest_taxon, data.frame(Taxon = taxon, p_value = p_value, difference = diff_mesures, t=resultat$statistic, confidence_interval= paste(resultat$conf.int[1],resultat$conf.int[2],sep=";"), df=resultat$parameter))
 }
 print(ttest_taxon)
-getwd()
-write.csv(ttest_taxon, "ttest_taxon_genus_wotaille.csv", row.names = T)
+etwd()
+write.csv(ttest_taxon, "ttest_taxon_genus.csv",row.names = T)
 
 #zoom sur certains échantillons
 ggplot(all_data[all_data$Sample == "32", ], aes(x = Taxon, y = Nombre, fill=meth)) +
