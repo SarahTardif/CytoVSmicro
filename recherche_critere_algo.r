@@ -33,7 +33,7 @@ write.csv(files_df,"../Ech2140_wodebris_ID.csv",row.names=FALSE)
 
 
 #data
-data<-read.csv("ID_Ech2140_balanced_genus_wotaille.csv",sep=",",h=T)
+data<-read.csv("ID_Ech2140_balanced_genus.csv",sep=",",h=T)
 data$Sample <- gsub("ID_CY ", "", data$Sample)
 data<-data[data$Sample!="21",]
 data<-data[data$Sample!="32",]
@@ -55,7 +55,7 @@ ggplot(datasp, aes(x = species, y = prob)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 #enlever tous les pollens dont la proba est inferieure à 0.5
-dataCY<- datasp[datasp$prob >= 0.70, ]
+dataCY<- datasp[datasp$prob >= 0, ]
 dataCY <- dataCY[, -which(names(dataCY) %in% c("prob"))]
 dataCY<-table(dataCY$Sample, dataCY$species)
 dataCY<-as.data.frame.matrix(dataCY)
@@ -95,8 +95,7 @@ datasp$species <- ifelse(datasp$species == "Carpinus"|datasp$species =="Celtis"|
 
 dataMI$Taxon <- ifelse(dataMI$Taxon == "Larix", "Pinaceae", dataMI$Taxon)
 dataMI$Taxon <- ifelse(dataMI$Taxon == "Olaeceae", "Syringa", dataMI$Taxon)
-dataMI$Taxon <- ifelse(dataMI$Taxon == "Armoise"|dataMI$Taxon =="Autres.herbes"|dataMI$Taxon =="Gramineae"|dataMI$Taxon =="Plantago"|dataMI$Taxon =="Typha", "Herbs", dataMI$Taxon)
-dataMI$Taxon <- ifelse(dataMI$Taxon == "NI", "NI.Others", dataMI$Taxon)
+dataMI$Taxon <- ifelse(dataMI$Taxon == "Armoise"|dataMI$Taxon =="Autres.herbes"|dataMI$Taxon =="Gramineae"|dataMI$Taxon =="Plantago"|dataMI$Taxon =="Typha"|dataMI$Taxon == "NI", "NI.Others", dataMI$Taxon)
 
 meanMI<-list()
 valseuil<-list()
@@ -159,6 +158,12 @@ dataCY<-as.data.frame.matrix(dataCY)
 #group<-data80CY[,-1]
 dataCY$TOTAL<-rowSums(dataCY)
 dataCY<-rownames_to_column(dataCY, var = "Sample")
+Taxa_wanted <- c("Fagus")
+for (col in Taxa_wanted) {
+  if (!col %in% colnames(dataCY)) {
+    dataCY[[col]] <- 0
+  }
+}
 dataCY <- pivot_longer(dataCY, cols = -c(Sample, TOTAL), names_to = "Taxon", values_to = "Nombre")
 dataCY$Sample <- factor(dataCY$Sample, levels = unique(dataCY$Sample))
 
